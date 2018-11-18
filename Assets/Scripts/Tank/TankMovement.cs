@@ -2,13 +2,14 @@
 
 public class TankMovement : MonoBehaviour
 {
-    public int m_PlayerNumber = 1;
-    public float m_Speed = 12f;
-    public float m_TurnSpeed = 180f;
+    public int m_PlayerNumber;
+    public float m_Acceleration = 15;
+    public float m_TurnSpeed = 3;
     public AudioSource m_MovementAudio;
     public AudioClip m_EngineIdling;
     public AudioClip m_EngineDriving;
     public float m_PitchRange = 0.2f;
+    public float m_MaxMoveSpeed = 15;
 
     private string m_MovementAxisName;
     private string m_TurnAxisName;
@@ -21,6 +22,7 @@ public class TankMovement : MonoBehaviour
     private void Awake()
     {
         m_Rigidbody = GetComponent<Rigidbody>();
+        m_MaxMoveSpeed = Mathf.Abs(m_MaxMoveSpeed);
     }
 
 
@@ -60,32 +62,63 @@ public class TankMovement : MonoBehaviour
         {
             if (m_MovementAudio.clip == m_EngineDriving)
             {
-                m_MovementAudio.clip = m_EngineIdling;
+                switchEnginAudio(m_EngineIdling);
             }
         }
         else
         {
             if (m_MovementAudio.clip == m_EngineIdling)
             {
-                m_MovementAudio.clip = m_EngineDriving;
+                switchEnginAudio(m_EngineDriving);
             }
         }
+    }
+
+    private void switchEnginAudio(AudioClip _clip)
+    {
+        m_MovementAudio.clip = _clip;
+        m_MovementAudio.pitch = Random.Range(m_OriginalPitch - m_PitchRange, m_OriginalPitch + m_PitchRange);
+        m_MovementAudio.Play();
     }
 
 
     private void FixedUpdate()
     {
+        m_MovementInputValue = Input.GetAxis(m_MovementAxisName);
+        m_TurnInputValue = Input.GetAxis(m_TurnAxisName);
+
+        Move();
+        Turn();
+        EngineAudio();
     }
 
 
     private void Move()
     {
-        // Adjust the position of the tank based on the player's input.
-    }
+        // // move directly to position
+        // Vector3 mov = transform.forward * m_MovementInputValue * m_Acceleration * Time.deltaTime;
+        // m_Rigidbody.MovePosition(m_Rigidbody.position + mov);
 
+        // // move using phisic model with force
+        m_Rigidbody.velocity = m_Rigidbody.velocity + transform.forward * m_MovementInputValue * m_Acceleration * Time.deltaTime;
+        m_Rigidbody.velocity = clamp3D(m_Rigidbody.velocity, m_MaxMoveSpeed);
+    }
 
     private void Turn()
     {
         // Adjust the rotation of the tank based on the player's input.
+
+        Vector3 rotat = new Vector3(0, m_TurnInputValue * m_TurnSpeed, 0);
+        m_Rigidbody.MoveRotation(m_Rigidbody.rotation * Quaternion.Euler(rotat));
+    }
+
+    private Vector3 clamp3D(Vector3 vec, float maxAbs)
+    {
+        maxAbs = Mathf.Abs(maxAbs);
+        return new Vector3(
+            Mathf.Clamp(vec.x, -maxAbs, maxAbs),
+            Mathf.Clamp(vec.y, -maxAbs, maxAbs),
+            Mathf.Clamp(vec.z, -maxAbs, maxAbs)
+        );
     }
 }
